@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Education Inequality Narrative Visualization</title>
-
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
   <style>
@@ -22,14 +21,9 @@
     #details { margin-top: 10px; font-size: 14px; text-align: left; }
     svg { display: block; margin: auto; }
     .hidden { display: none; }
-
     .annotation-note-title,
     .annotation-note-label {
-      fill: white;
-      stroke: black;
-      stroke-width: 2px;
-      paint-order: stroke;
-      font-weight: bold;
+      fill: white; stroke: black; stroke-width: 2px; paint-order: stroke; font-weight: bold;
     }
   </style>
 </head>
@@ -46,106 +40,253 @@
       <button id="prevBtn">Previous</button>
       <button id="nextBtn">Next</button>
       <label>School Type:
-        <select id="typeFilter"><option>All</option><option>Public</option><option>Private</option><option>Charter</option></select>
+        <select id="typeFilter">
+          <option>All</option><option>Public</option><option>Private</option><option>Charter</option>
+        </select>
       </label>
       <label>Point Size:
         <input type="range" id="sizeRange" min="2" max="10" value="4" />
       </label>
     </div>
     <div id="viz"></div>
-    <div id="hint" style="color:#555; font-style:italic;">Tip: Hover for details, drag box to select multiple schools.</div>
+    <div id="hint" style="color:#555; font-style:italic;">
+      Tip: Hover for details, drag box to select multiple schools.
+    </div>
     <div id="details"></div>
   </div>
 
   <script>
     let currentSlide = 1, data;
-    const margin = {top:40,right:80,bottom:50,left:80}, width = 800-margin.left-margin.right, height = 500-margin.top-margin.bottom;
+    const margin = { top: 40, right: 80, bottom: 50, left: 80 },
+          width  = 800 - margin.left - margin.right,
+          height = 500 - margin.top  - margin.bottom;
+
     const container = d3.select('#container');
     const svgGroup = container.select('#viz')
-      .append('svg').attr('width',width+margin.left+margin.right).attr('height',height+margin.top+margin.bottom)
-      .append('g').attr('transform',`translate(${margin.left},${margin.top})`);
-    const tooltip = d3.select('body').append('div').attr('class','tooltip').style('opacity',0);
-    const brush = d3.brush().extent([[0,0],[width,height]]).on('end',brushended);
+      .append('svg')
+        .attr('width',  width  + margin.left + margin.right)
+        .attr('height', height + margin.top  + margin.bottom)
+      .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    d3.csv('education_inequality_data.csv', d3.autoType).then(raw=>{data=raw; init();});
+    const tooltip = d3.select('body')
+      .append('div').attr('class','tooltip').style('opacity',0);
 
-    d3.select('#startBtn').on('click',()=>{
+    const brush = d3.brush()
+      .extent([[0,0],[width,height]])
+      .on('end', brushended);
+
+    // -------------- utility: Pearson correlation + regression --------------
+    function pearson(data, xKey, yKey) {
+      const n = data.length;
+      const xs = data.map(d => d[xKey]);
+      const ys = data.map(d => d[yKey]);
+      const mean = arr => arr.reduce((a,b)=>a+b,0)/n;
+      const xBar = mean(xs), yBar = mean(ys);
+      let num = 0, denX = 0, denY = 0;
+      xs.forEach((x,i) => {
+        const dx = x - xBar, dy = ys[i] - yBar;
+        num   += dx * dy;
+        denX  += dx * dx;
+        denY  += dy * dy;
+      });
+      return num / Math.sqrt(denX * denY);
+    }
+
+    function linearFit(data, xKey, yKey) {
+      const n = data.length;
+      const xs = data.map(d => d[xKey]);
+      const ys = data.map(d => d[yKey]);
+      const xBar = xs.reduce((a,b)=>a+b,0)/n;
+      const yBar = ys.reduce((a,b)=>a+b,0)/n;
+      let num = 0, den = 0;
+      xs.forEach((x,i) => {
+        num += (x - xBar) * (ys[i] - yBar);
+        den += (x - xBar) ** 2;
+      });
+      const slope = num/den;
+      const intercept = yBar - slope * xBar;
+      return { slope, intercept };
+    }
+    // ------------------------------------------------------------------------
+
+    d3.csv('education_inequality_data.csv', d3.autoType)
+      .then(raw => { data = raw; init(); });
+
+    d3.select('#startBtn').on('click', () => {
       d3.select('#home').classed('hidden', true);
       container.classed('hidden', false);
     });
 
     function init(){
-      d3.select('#prevBtn').on('click',()=>{
-        if(currentSlide>1){ currentSlide--; updateSlide(); }
-        else { container.classed('hidden', true); d3.select('#home').classed('hidden', false); }
+      d3.select('#prevBtn').on('click', () => {
+        if (currentSlide > 1) currentSlide--;
+        else {
+          container.classed('hidden', true);
+          d3.select('#home').classed('hidden', false);
+          return;
+        }
+        updateSlide();
       });
-      d3.select('#nextBtn').on('click',()=>{ if(currentSlide<3){ currentSlide++; updateSlide(); }});
-      d3.select('#typeFilter').on('change',updateSlide);
-      d3.select('#sizeRange').on('input',updateSlide);
+      d3.select('#nextBtn').on('click', () => {
+        if (currentSlide < 3) { currentSlide++; updateSlide(); }
+      });
+      d3.select('#typeFilter').on('change', updateSlide);
+      d3.select('#sizeRange').on('input', updateSlide);
       updateSlide();
     }
 
     function updateSlide(){
-      svgGroup.selectAll('*').remove(); d3.select('#details').html('');
-      const filter = d3.select('#typeFilter').property('value');
+      svgGroup.selectAll('*').remove();
+      d3.select('#details').html('');
+      const filter    = d3.select('#typeFilter').property('value');
       const pointSize = +d3.select('#sizeRange').property('value');
-      const subset = filter==='All'? data : data.filter(d=>d.school_type===filter);
+      const subset    = filter === 'All'
+                        ? data
+                        : data.filter(d => d.school_type === filter);
+
+      // slide configuration
       let cfg;
-      if(currentSlide===1){
-        cfg=['funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)',
-             'No clear trend: correlation ≈ 0','', 300, 150, 10, 0, 'crimson'];
-        d3.select('#title').text('Scene 1: Funding vs Test Score');
+      if (currentSlide === 1) {
+        cfg = {
+          xKey: 'funding_per_student_usd',
+          yKey: 'avg_test_score_percent',
+          xLabel: 'Funding per Student (USD)',
+          yLabel: 'Average Test Score (%)',
+          annX: 300, annY: 150, annDx: 10, annDy: 0,
+          color: 'crimson',
+          title: 'Scene 1: Funding vs Test Score'
+        };
       }
-      if(currentSlide===2){
-        cfg=['student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)',
-             'Low-ratio schools slightly higher-scoring','Ratio vs. Score', -60, 50, 10, 0, 'seagreen'];
-        d3.select('#title').text('Scene 2: Student–Teacher Ratio');
+      if (currentSlide === 2) {
+        cfg = {
+          xKey: 'student_teacher_ratio',
+          yKey: 'avg_test_score_percent',
+          xLabel: 'Student–Teacher Ratio',
+          yLabel: 'Average Test Score (%)',
+          annX: -60, annY: 50, annDx: 10, annDy: 0,
+          color: 'seagreen',
+          title: 'Scene 2: Student–Teacher Ratio'
+        };
       }
-      if(currentSlide===3){
-        cfg=['percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)',
-             'No strong inverse relationship','Income vs. Score', -60, 300, 10, 0, 'steelblue'];
-        d3.select('#title').text('Scene 3: Socioeconomic Status');
+      if (currentSlide === 3) {
+        cfg = {
+          xKey: 'percent_low_income',
+          yKey: 'avg_test_score_percent',
+          xLabel: 'Percent Low-Income (%)',
+          yLabel: 'Average Test Score (%)',
+          annX: -60, annY: 300, annDx: 10, annDy: 0,
+          color: 'steelblue',
+          title: 'Scene 3: Socioeconomic Status'
+        };
       }
-      drawScatter(subset, ...cfg, pointSize);
+
+      d3.select('#title').text(cfg.title);
+      drawScatter(subset, cfg, pointSize);
     }
 
-    function drawScatter(dataset, xKey, yKey, xLabel, yLabel, note, title, ax, ay, dx, dy, color, pointSize){
-      const xScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[xKey])).nice().range([0,width]);
-      const yScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[yKey])).nice().range([height,0]);
-      svgGroup.append('g').attr('transform',`translate(0,${height})`).call(d3.axisBottom(xScale));
+    function drawScatter(dataset, cfg, pointSize){
+      // scales
+      const xScale = d3.scaleLinear()
+        .domain(d3.extent(dataset, d=>d[cfg.xKey])).nice()
+        .range([0, width]);
+      const yScale = d3.scaleLinear()
+        .domain(d3.extent(dataset, d=>d[cfg.yKey])).nice()
+        .range([height, 0]);
+
+      // axes
+      svgGroup.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale));
       svgGroup.append('g').call(d3.axisLeft(yScale));
-      svgGroup.append('text').attr('x',width/2).attr('y',height+margin.bottom-10).attr('text-anchor','middle').text(xLabel);
-      svgGroup.append('text').attr('transform','rotate(-90)').attr('x',-height/2).attr('y',-margin.left+15).attr('text-anchor','middle').text(yLabel);
+
+      // axis labels
+      svgGroup.append('text')
+        .attr('x', width/2).attr('y', height + margin.bottom - 10)
+        .attr('text-anchor','middle').text(cfg.xLabel);
+      svgGroup.append('text')
+        .attr('transform','rotate(-90)')
+        .attr('x', -height/2).attr('y', -margin.left + 15)
+        .attr('text-anchor','middle').text(cfg.yLabel);
+
+      // brush
       svgGroup.append('g').call(brush);
 
-      svgGroup.append('g').selectAll('circle').data(dataset).enter().append('circle')
-        .attr('cx',d=>xScale(d[xKey])).attr('cy',d=>yScale(d[yKey])).attr('r',pointSize)
-        .attr('fill',color).attr('opacity',0.7)
-        .on('mouseover',(e,d)=>{ tooltip.style('opacity',0.9)
-            .html(`<strong>${d.school_name} (${d.school_type})</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
-            .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);
-        }).on('mouseout',()=>tooltip.style('opacity',0));
+      // points
+      svgGroup.append('g').selectAll('circle')
+        .data(dataset).enter().append('circle')
+        .attr('cx', d => xScale(d[cfg.xKey]))
+        .attr('cy', d => yScale(d[cfg.yKey]))
+        .attr('r', pointSize)
+        .attr('fill', cfg.color)
+        .attr('opacity', 0.7)
+        .on('mouseover', (e,d) => {
+          tooltip.style('opacity',0.9)
+            .html(`<strong>${d.school_name} (${d.school_type})</strong><br>
+                   ${cfg.xLabel}: ${d[cfg.xKey]}<br>
+                   ${cfg.yLabel}: ${d[cfg.yKey]}`)
+            .style('left', `${e.pageX+10}px`)
+            .style('top',  `${e.pageY-28}px`);
+        })
+        .on('mouseout', () => tooltip.style('opacity',0));
 
-      const ann = d3.annotation().type(d3.annotationCalloutElbow).annotations([{ note:{label:note,title:title,wrap:400}, x:ax, y:ay, dx:dx, dy:dy }]);
+      // compute stats
+      const ρ = pearson(dataset, cfg.xKey, cfg.yKey);
+      const fit = linearFit(dataset, cfg.xKey, cfg.yKey);
+
+      // draw regression line
+      const xVals = d3.extent(dataset, d=>d[cfg.xKey]);
+      const lineData = xVals.map(x => [ x, fit.slope * x + fit.intercept ]);
+      svgGroup.append('path')
+        .datum(lineData)
+        .attr('fill','none')
+        .attr('stroke','#333')
+        .attr('stroke-width',1.5)
+        .attr('d', d3.line()
+          .x(d => xScale(d[0]))
+          .y(d => yScale(d[1]))
+        );
+
+      // annotation with ρ
+      const annText = `ρ ≈ ${ρ.toFixed(2)}`;
+      const ann = d3.annotation()
+        .type(d3.annotationCalloutElbow)
+        .annotations([{
+          note: { title: annText, label: '', wrap: 200 },
+          x: cfg.annX, y: cfg.annY,
+          dx: cfg.annDx, dy: cfg.annDy
+        }]);
       svgGroup.append('g').call(ann);
     }
 
     function brushended({selection}){
-      if(!selection){ d3.select('#details').html(''); return; }
+      if (!selection) {
+        d3.select('#details').html('');
+        return;
+      }
       const [[x0,y0],[x1,y1]] = selection;
       const filter = d3.select('#typeFilter').property('value');
-      const dataset = filter==='All'? data : data.filter(d=>d.school_type===filter);
+      const dataset = filter === 'All'
+                      ? data
+                      : data.filter(d => d.school_type === filter);
       const keys = ['funding_per_student_usd','student_teacher_ratio','percent_low_income'];
       const xKey = keys[currentSlide-1], yKey = 'avg_test_score_percent';
-      const selected = dataset.filter(d=>{
-        const xv = d3.scaleLinear().domain(d3.extent(dataset, d=>d[xKey])).nice().range([0,width])(d[xKey]);
-        const yv = d3.scaleLinear().domain(d3.extent(dataset, d=>d[yKey])).nice().range([height,0])(d[yKey]);
-        return x0<=xv && xv<=x1 && y0<=yv && yv<=y1;
+
+      // reuse scales
+      const xScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[xKey])).nice().range([0,width]);
+      const yScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[yKey])).nice().range([height,0]);
+
+      const selected = dataset.filter(d => {
+        const xv = xScale(d[xKey]), yv = yScale(d[yKey]);
+        return x0 <= xv && xv <= x1 && y0 <= yv && yv <= y1;
       });
-      if(selected.length){
-        const list = selected.map(d=>`• ${d.school_name} (${d.school_type})`).join('<br>');
+
+      if (selected.length) {
+        const list = selected.map(d => `• ${d.school_name} (${d.school_type})`).join('<br>');
         d3.select('#details').html(`<strong>Selected Schools:</strong><br>${list}`);
-      } else { d3.select('#details').html('No schools in selection.'); }
+      } else {
+        d3.select('#details').html('No schools in selection.');
+      }
     }
   </script>
 </body>
