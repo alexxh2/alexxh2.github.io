@@ -22,6 +22,15 @@
     #details { margin-top: 10px; font-size: 14px; text-align: left; }
     svg { display: block; margin: auto; }
     .hidden { display: none; }
+    /* Annotation text styling */
+    .annotation-note-title,
+    .annotation-note-label {
+      fill: white;
+      stroke: black;
+      stroke-width: 0.75px;
+      paint-order: stroke;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -84,7 +93,7 @@
       let cfg;
       if(currentSlide===1){
         cfg=['funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)',
-             'No clear trend: correlation ≈ 0','Funding vs. Score', width+20, 50, -50, 0, 'crimson'];
+             'No clear trend: correlation ≈ 0','Funding vs. Score', width+20, height, -100, -30, 'crimson'];
         d3.select('#title').text('Scene 1: Funding vs Test Score');
       }
       if(currentSlide===2){
@@ -94,7 +103,7 @@
       }
       if(currentSlide===3){
         cfg=['percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)',
-             'No strong inverse relationship','Income vs. Score', -120, 50, 10, 0, 'steelblue'];
+             'No strong inverse relationship','Income vs. Score', -60, 50, 10, 0, 'steelblue'];
         d3.select('#title').text('Scene 3: Socioeconomic Status');
       }
       drawScatter(subset, ...cfg, pointSize);
@@ -118,7 +127,7 @@
         }).on('mouseout',()=>tooltip.style('opacity',0));
 
       // Annotation outside with arrow
-      const ann = d3.annotation().type(d3.annotationCalloutElbow).annotations([{ note:{label:note,title:title,wrap:300}, x:ax, y:ay, dx:dx, dy:dy }]);
+      const ann = d3.annotation().type(d3.annotationCalloutElbow).annotations([{ note:{label:note,title:title,wrap:400}, x:ax, y:ay, dx:dx, dy:dy }]);
       svgGroup.append('g').call(ann);
     }
 
