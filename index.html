@@ -7,114 +7,116 @@
   <!-- D3 and d3-annotation -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css" />
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 20px; }
-    #controls { margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
+    body { font-family: sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    #home, #container { width: 90%; max-width: 900px; text-align: center; }
+    #controls { margin: 20px 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
     button, select, input[type=range] { padding: 6px; }
+    #viz { margin: auto; }
     .tooltip {
       position: absolute; text-align: left; padding: 8px; font-size: 12px;
       background: white; border: 1px solid #ccc; border-radius: 4px;
       pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     .brush .selection { fill: steelblue; fill-opacity: 0.3; stroke: #fff; }
-    #details { margin-top: 10px; font-size: 14px; }
+    #details { margin-top: 10px; font-size: 14px; text-align: left; }
+    svg { display: block; margin: auto; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <h1>How Funding, Staffing & Socioeconomic Status Relate to Test Scores</h1>
-  <div id="controls">
-    <button id="prevBtn">Previous</button>
-    <button id="nextBtn">Next</button>
-    <label>School Type:
-      <select id="typeFilter"><option>All</option><option>Public</option><option>Private</option><option>Charter</option></select>
-    </label>
-    <label>Point Size:
-      <input type="range" id="sizeRange" min="2" max="10" value="4" />
-    </label>
+  <div id="home">
+    <h1>Education Inequality Narrative Visualization</h1>
+    <p>Explore how funding, staffing ratios, and socioeconomic status relate to test scores.</p>
+    <button id="startBtn">Start Story</button>
   </div>
 
-  <div id="viz"></div>
-  <div id="hint" style="color:#555; font-style:italic;">Tip: Hover for details, drag box to select multiple schools.</div>
-  <div id="details"></div>
+  <div id="container" class="hidden">
+    <h2 id="title">How Funding, Staffing & Socioeconomic Status Relate to Test Scores</h2>
+    <div id="controls">
+      <button id="prevBtn">Previous</button>
+      <button id="nextBtn">Next</button>
+      <label>School Type:
+        <select id="typeFilter"><option>All</option><option>Public</option><option>Private</option><option>Charter</option></select>
+      </label>
+      <label>Point Size:
+        <input type="range" id="sizeRange" min="2" max="10" value="4" />
+      </label>
+    </div>
+    <div id="viz"></div>
+    <div id="hint" style="color:#555; font-style:italic;">Tip: Hover for details, drag box to select multiple schools.</div>
+    <div id="details"></div>
+  </div>
 
   <script>
   let currentSlide=1,data;
   const margin={top:40,right:20,bottom:50,left:60}, width=800-margin.left-margin.right, height=500-margin.top-margin.bottom;
-  const svg=d3.select('#viz').append('svg').attr('width',width+margin.left+margin.right).attr('height',height+margin.top+margin.bottom)
-    .append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const container=d3.select('#container');
+  const svgGroup = container.select('#viz').append('svg').attr('width',width+margin.left+margin.right).attr('height',height+margin.top+margin.bottom).append('g').attr('transform',`translate(${margin.left},${margin.top})`);
   const tooltip=d3.select('body').append('div').attr('class','tooltip').style('opacity',0);
   const brush=d3.brush().extent([[0,0],[width,height]]).on('end',brushended);
 
   d3.csv('education_inequality_data.csv',d3.autoType).then(raw=>{data=raw; init();});
 
+  d3.select('#startBtn').on('click',()=>{
+    d3.select('#home').classed('hidden', true);
+    container.classed('hidden', false);
+  });
+
   function init(){
-    d3.select('#prevBtn').on('click',()=>{if(currentSlide>1) {currentSlide--;updateSlide();}});
-    d3.select('#nextBtn').on('click',()=>{if(currentSlide<3) {currentSlide++;updateSlide();}});
+    d3.select('#prevBtn').on('click',()=>{if(currentSlide>1){currentSlide--;updateSlide();}});
+    d3.select('#nextBtn').on('click',()=>{if(currentSlide<3){currentSlide++;updateSlide();}});
     d3.select('#typeFilter').on('change',updateSlide);
     d3.select('#sizeRange').on('input',updateSlide);
     updateSlide();
   }
 
   function updateSlide(){
-    svg.selectAll('*').remove(); d3.select('#details').html('');
+    svgGroup.selectAll('*').remove(); d3.select('#details').html('');
     const filter=d3.select('#typeFilter').property('value');
     const size=+d3.select('#sizeRange').property('value');
     const subset=filter==='All'?data:data.filter(d=>d.school_type===filter);
     let cfg;
-    if(currentSlide===1) cfg=['funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)','No clear trend: correlation ≈ 0','Funding vs. Score',15000,85,40,-30];
-    if(currentSlide===2) cfg=['student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)','Low-ratio schools often high-scoring','Ratio vs. Score',12,95,-60,-40];
-    if(currentSlide===3) cfg=['percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)','No strong inverse relationship','Income vs. Score',60,75,50,30];
+    if(currentSlide===1){cfg=['funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)','No clear trend: correlation ≈ 0','Funding vs. Score',15000,85,40,-30]; d3.select('#title').text('Scene 1: Funding vs Test Score');}
+    if(currentSlide===2){cfg=['student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)','Low-ratio schools often high-scoring','Ratio vs. Score',12,95,-60,-40]; d3.select('#title').text('Scene 2: Student–Teacher Ratio');}
+    if(currentSlide===3){cfg=['percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)','No strong inverse relationship','Income vs. Score',60,75,50,30]; d3.select('#title').text('Scene 3: Socioeconomic Status');}
     drawScatter(subset,...cfg,size);
   }
 
   function drawScatter(dataset,xKey,yKey,xLabel,yLabel,note,title,ax,ay,dx,dy,pointSize){
     const x=d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width]);
     const y=d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0]);
-    svg.append('g').attr('transform',`translate(0,${height})`).call(d3.axisBottom(x));
-    svg.append('g').call(d3.axisLeft(y));
-    svg.append('text').attr('x',width/2).attr('y',height+margin.bottom-10).attr('text-anchor','middle').text(xLabel);
-    svg.append('text').attr('transform','rotate(-90)').attr('x',-height/2).attr('y',-margin.left+15).attr('text-anchor','middle').text(yLabel);
-    // Add brush for selection
-    svg.append('g').call(brush);
-    
-    // Plot circles on top of brush
-    const circles = svg.append('g').selectAll('circle').data(dataset).enter().append('circle')
-      .attr('cx', d => x(d[xKey]))
-      .attr('cy', d => y(d[yKey]))
-      .attr('r', pointSize)
-      .attr('fill', '#1f77b4')
-      .attr('opacity', 0.7)
-      .on('mouseover', (e, d) => {
-        tooltip.style('opacity', 0.9)
-               .html(`<strong>${d.school_name}</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
-               .style('left', `${e.pageX + 10}px`)
-               .style('top', `${e.pageY - 28}px`);
-      })
-      .on('mouseout', () => tooltip.style('opacity', 0));
-    const ann=d3.annotation().type(d3.annotationLabel).annotations([{note:{label: note, title: title, wrap: 150}, x: x(ax), y: y(ay), dx: dx, dy: dy}]);
-    svg.append('g').call(ann);
+    svgGroup.append('g').attr('transform',`translate(0,${height})`).call(d3.axisBottom(x));
+    svgGroup.append('g').call(d3.axisLeft(y));
+    svgGroup.append('text').attr('x',width/2).attr('y',height+margin.bottom-10).attr('text-anchor','middle').text(xLabel);
+    svgGroup.append('text').attr('transform','rotate(-90)').attr('x',-height/2).attr('y',-margin.left+15).attr('text-anchor','middle').text(yLabel);
+    svgGroup.append('g').call(brush);
+    const circles=svgGroup.append('g').selectAll('circle').data(dataset).enter().append('circle')
+      .attr('cx',d=>x(d[xKey])).attr('cy',d=>y(d[yKey])).attr('r',pointSize)
+      .attr('fill','#1f77b4').attr('opacity',0.7)
+      .on('mouseover',(e,d)=>{tooltip.style('opacity',0.9).html(`<strong>${d.school_name} (${d.school_type})</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
+        .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);
+      }).on('mouseout',()=>tooltip.style('opacity',0));
+    const ann=d3.annotation().type(d3.annotationLabel).annotations([{note:{label:note,title:title,wrap:300},x:x(ax),y:y(ay),dx:dx,dy:dy}]);
+    svgGroup.append('g').call(ann);
   }
 
   function brushended({selection}){
-    if(!selection) {d3.select('#details').html(''); return;}
+    if(!selection){d3.select('#details').html(''); return;}
     const [[x0,y0],[x1,y1]]=selection;
     const filter=d3.select('#typeFilter').property('value');
     const dataset=filter==='All'?data:data.filter(d=>d.school_type===filter);
     const xKey=['funding_per_student_usd','student_teacher_ratio','percent_low_income'][currentSlide-1];
     const yKey='avg_test_score_percent';
     const selected=dataset.filter(d=>{
-      const x=d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width])(d[xKey]);
-      const y=d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0])(d[yKey]);
-      return x0<=x && x<=x1 && y0<=y && y<=y1;
+      const xv=d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width])(d[xKey]);
+      const yv=d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0])(d[yKey]);
+      return x0<=xv && xv<=x1 && y0<=yv && yv<=y1;
     });
     if(selected.length){
-      const list=selected.map(d=>d.school_name+' ('+d.school_type+')').join('<br>');
+      const list=selected.map(d=>`• ${d.school_name} (${d.school_type})`).join('<br>');
       d3.select('#details').html(`<strong>Selected Schools:</strong><br>${list}`);
-    } else {
-      d3.select('#details').html('No schools in selection.');
-    }
+    } else { d3.select('#details').html('No schools in selection.'); }
   }
   </script>
 </body>
