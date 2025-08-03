@@ -93,7 +93,7 @@
                .style('top', `${e.pageY - 28}px`);
       })
       .on('mouseout', () => tooltip.style('opacity', 0));
-    const ann=d3.annotation().type(d3.annotationLabel).annotations([{note:{label:note,title:title},x:x(ax),y:y(ay),dx:dx,dy:dy}]);
+    const ann=d3.annotation().type(d3.annotationLabel).annotations([{note:{label: note, title: title, wrap: 150}, x: x(ax), y: y(ay), dx: dx, dy: dy}]);
     svg.append('g').call(ann);
   }
 
