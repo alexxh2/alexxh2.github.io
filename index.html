@@ -76,51 +76,48 @@
       .extent([[0,0],[width,height]])
       .on('end', brushended);
 
-    // -------------- utility: Pearson correlation + regression --------------
+    // ----- stats: Pearson + regression -----
     function pearson(data, xKey, yKey) {
       const n = data.length;
-      const xs = data.map(d => d[xKey]);
-      const ys = data.map(d => d[yKey]);
+      const xs = data.map(d=>d[xKey]), ys = data.map(d=>d[yKey]);
       const mean = arr => arr.reduce((a,b)=>a+b,0)/n;
       const xBar = mean(xs), yBar = mean(ys);
-      let num = 0, denX = 0, denY = 0;
-      xs.forEach((x,i) => {
-        const dx = x - xBar, dy = ys[i] - yBar;
-        num   += dx * dy;
-        denX  += dx * dx;
-        denY  += dy * dy;
+      let num=0, denX=0, denY=0;
+      xs.forEach((x,i)=>{
+        const dx = x-xBar, dy = ys[i]-yBar;
+        num   += dx*dy;
+        denX  += dx*dx;
+        denY  += dy*dy;
       });
-      return num / Math.sqrt(denX * denY);
+      return num/Math.sqrt(denX*denY);
     }
-
     function linearFit(data, xKey, yKey) {
       const n = data.length;
-      const xs = data.map(d => d[xKey]);
-      const ys = data.map(d => d[yKey]);
+      const xs = data.map(d=>d[xKey]), ys = data.map(d=>d[yKey]);
       const xBar = xs.reduce((a,b)=>a+b,0)/n;
       const yBar = ys.reduce((a,b)=>a+b,0)/n;
-      let num = 0, den = 0;
-      xs.forEach((x,i) => {
-        num += (x - xBar) * (ys[i] - yBar);
-        den += (x - xBar) ** 2;
+      let num=0, den=0;
+      xs.forEach((x,i)=>{
+        num += (x-xBar)*(ys[i]-yBar);
+        den += (x-xBar)**2;
       });
       const slope = num/den;
-      const intercept = yBar - slope * xBar;
+      const intercept = yBar - slope*xBar;
       return { slope, intercept };
     }
-    // ------------------------------------------------------------------------
+    // ----------------------------------------
 
     d3.csv('education_inequality_data.csv', d3.autoType)
       .then(raw => { data = raw; init(); });
 
-    d3.select('#startBtn').on('click', () => {
+    d3.select('#startBtn').on('click', ()=>{
       d3.select('#home').classed('hidden', true);
       container.classed('hidden', false);
     });
 
     function init(){
-      d3.select('#prevBtn').on('click', () => {
-        if (currentSlide > 1) currentSlide--;
+      d3.select('#prevBtn').on('click', ()=>{
+        if (currentSlide>1) currentSlide--;
         else {
           container.classed('hidden', true);
           d3.select('#home').classed('hidden', false);
@@ -128,9 +125,7 @@
         }
         updateSlide();
       });
-      d3.select('#nextBtn').on('click', () => {
-        if (currentSlide < 3) { currentSlide++; updateSlide(); }
-      });
+      d3.select('#nextBtn').on('click', ()=>{ if (currentSlide<3) { currentSlide++; updateSlide(); } });
       d3.select('#typeFilter').on('change', updateSlide);
       d3.select('#sizeRange').on('input', updateSlide);
       updateSlide();
@@ -139,45 +134,38 @@
     function updateSlide(){
       svgGroup.selectAll('*').remove();
       d3.select('#details').html('');
+
       const filter    = d3.select('#typeFilter').property('value');
       const pointSize = +d3.select('#sizeRange').property('value');
-      const subset    = filter === 'All'
-                        ? data
-                        : data.filter(d => d.school_type === filter);
+      const subset    = filter==='All' ? data : data.filter(d=>d.school_type===filter);
 
-      // slide configuration
+      // slide configs including original note
       let cfg;
-      if (currentSlide === 1) {
+      if (currentSlide===1) {
         cfg = {
-          xKey: 'funding_per_student_usd',
-          yKey: 'avg_test_score_percent',
-          xLabel: 'Funding per Student (USD)',
-          yLabel: 'Average Test Score (%)',
-          annX: 300, annY: 150, annDx: 10, annDy: 0,
-          color: 'crimson',
-          title: 'Scene 1: Funding vs Test Score'
+          xKey:'funding_per_student_usd', yKey:'avg_test_score_percent',
+          xLabel:'Funding per Student (USD)', yLabel:'Average Test Score (%)',
+          noteTitle:'', noteText:'No clear trend: correlation ≈ 0',
+          annX:300, annY:150, annDx:10, annDy:0,
+          color:'crimson', title:'Scene 1: Funding vs Test Score'
         };
       }
-      if (currentSlide === 2) {
+      if (currentSlide===2) {
         cfg = {
-          xKey: 'student_teacher_ratio',
-          yKey: 'avg_test_score_percent',
-          xLabel: 'Student–Teacher Ratio',
-          yLabel: 'Average Test Score (%)',
-          annX: -60, annY: 50, annDx: 10, annDy: 0,
-          color: 'seagreen',
-          title: 'Scene 2: Student–Teacher Ratio'
+          xKey:'student_teacher_ratio', yKey:'avg_test_score_percent',
+          xLabel:'Student–Teacher Ratio', yLabel:'Average Test Score (%)',
+          noteTitle:'Ratio vs. Score', noteText:'Low-ratio schools slightly lower-scoring',
+          annX:-60, annY:50, annDx:10, annDy:0,
+          color:'seagreen', title:'Scene 2: Student–Teacher Ratio'
         };
       }
-      if (currentSlide === 3) {
+      if (currentSlide===3) {
         cfg = {
-          xKey: 'percent_low_income',
-          yKey: 'avg_test_score_percent',
-          xLabel: 'Percent Low-Income (%)',
-          yLabel: 'Average Test Score (%)',
-          annX: -60, annY: 300, annDx: 10, annDy: 0,
-          color: 'steelblue',
-          title: 'Scene 3: Socioeconomic Status'
+          xKey:'percent_low_income', yKey:'avg_test_score_percent',
+          xLabel:'Percent Low-Income (%)', yLabel:'Average Test Score (%)',
+          noteTitle:'Income vs. Score', noteText:'No strong inverse relationship',
+          annX:-60, annY:300, annDx:10, annDy:0,
+          color:'steelblue', title:'Scene 3: Socioeconomic Status'
         };
       }
 
@@ -186,27 +174,24 @@
     }
 
     function drawScatter(dataset, cfg, pointSize){
-      // scales
       const xScale = d3.scaleLinear()
         .domain(d3.extent(dataset, d=>d[cfg.xKey])).nice()
-        .range([0, width]);
+        .range([0,width]);
       const yScale = d3.scaleLinear()
         .domain(d3.extent(dataset, d=>d[cfg.yKey])).nice()
-        .range([height, 0]);
+        .range([height,0]);
 
-      // axes
+      // axes + labels
       svgGroup.append('g')
-        .attr('transform', `translate(0,${height})`)
+        .attr('transform',`translate(0,${height})`)
         .call(d3.axisBottom(xScale));
       svgGroup.append('g').call(d3.axisLeft(yScale));
-
-      // axis labels
       svgGroup.append('text')
-        .attr('x', width/2).attr('y', height + margin.bottom - 10)
+        .attr('x',width/2).attr('y',height+margin.bottom-10)
         .attr('text-anchor','middle').text(cfg.xLabel);
       svgGroup.append('text')
         .attr('transform','rotate(-90)')
-        .attr('x', -height/2).attr('y', -margin.left + 15)
+        .attr('x',-height/2).attr('y',-margin.left+15)
         .attr('text-anchor','middle').text(cfg.yLabel);
 
       // brush
@@ -215,44 +200,47 @@
       // points
       svgGroup.append('g').selectAll('circle')
         .data(dataset).enter().append('circle')
-        .attr('cx', d => xScale(d[cfg.xKey]))
-        .attr('cy', d => yScale(d[cfg.yKey]))
+        .attr('cx', d=>xScale(d[cfg.xKey]))
+        .attr('cy', d=>yScale(d[cfg.yKey]))
         .attr('r', pointSize)
         .attr('fill', cfg.color)
         .attr('opacity', 0.7)
-        .on('mouseover', (e,d) => {
+        .on('mouseover',(e,d)=>{
           tooltip.style('opacity',0.9)
             .html(`<strong>${d.school_name} (${d.school_type})</strong><br>
                    ${cfg.xLabel}: ${d[cfg.xKey]}<br>
                    ${cfg.yLabel}: ${d[cfg.yKey]}`)
-            .style('left', `${e.pageX+10}px`)
-            .style('top',  `${e.pageY-28}px`);
+            .style('left',`${e.pageX+10}px`)
+            .style('top', `${e.pageY-28}px`);
         })
-        .on('mouseout', () => tooltip.style('opacity',0));
+        .on('mouseout',()=>tooltip.style('opacity',0));
 
       // compute stats
-      const ρ = pearson(dataset, cfg.xKey, cfg.yKey);
+      const ρ  = pearson(dataset, cfg.xKey, cfg.yKey);
       const fit = linearFit(dataset, cfg.xKey, cfg.yKey);
 
-      // draw regression line
+      // regression line
       const xVals = d3.extent(dataset, d=>d[cfg.xKey]);
-      const lineData = xVals.map(x => [ x, fit.slope * x + fit.intercept ]);
+      const lineData = xVals.map(x => [x, fit.slope*x + fit.intercept]);
       svgGroup.append('path')
         .datum(lineData)
         .attr('fill','none')
         .attr('stroke','#333')
         .attr('stroke-width',1.5)
         .attr('d', d3.line()
-          .x(d => xScale(d[0]))
-          .y(d => yScale(d[1]))
+          .x(d=>xScale(d[0]))
+          .y(d=>yScale(d[1]))
         );
 
-      // annotation with ρ
-      const annText = `ρ ≈ ${ρ.toFixed(2)}`;
+      // merged annotation (original + ρ)
       const ann = d3.annotation()
         .type(d3.annotationCalloutElbow)
         .annotations([{
-          note: { title: annText, label: '', wrap: 200 },
+          note: {
+            title: cfg.noteTitle,
+            label: `${cfg.noteText}\nρ ≈ ${ρ.toFixed(2)}`,
+            wrap: 200
+          },
           x: cfg.annX, y: cfg.annY,
           dx: cfg.annDx, dy: cfg.annDy
         }]);
@@ -266,23 +254,20 @@
       }
       const [[x0,y0],[x1,y1]] = selection;
       const filter = d3.select('#typeFilter').property('value');
-      const dataset = filter === 'All'
-                      ? data
-                      : data.filter(d => d.school_type === filter);
+      const dataset = filter==='All'? data : data.filter(d=>d.school_type===filter);
       const keys = ['funding_per_student_usd','student_teacher_ratio','percent_low_income'];
-      const xKey = keys[currentSlide-1], yKey = 'avg_test_score_percent';
+      const xKey = keys[currentSlide-1], yKey='avg_test_score_percent';
 
-      // reuse scales
-      const xScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[xKey])).nice().range([0,width]);
-      const yScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[yKey])).nice().range([height,0]);
+      const xScale = d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width]);
+      const yScale = d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0]);
 
-      const selected = dataset.filter(d => {
-        const xv = xScale(d[xKey]), yv = yScale(d[yKey]);
-        return x0 <= xv && xv <= x1 && y0 <= yv && yv <= y1;
+      const selected = dataset.filter(d=>{
+        const xv=xScale(d[xKey]), yv=yScale(d[yKey]);
+        return x0<=xv && xv<=x1 && y0<=yv && yv<=y1;
       });
 
       if (selected.length) {
-        const list = selected.map(d => `• ${d.school_name} (${d.school_type})`).join('<br>');
+        const list = selected.map(d=>`• ${d.school_name} (${d.school_type})`).join('<br>');
         d3.select('#details').html(`<strong>Selected Schools:</strong><br>${list}`);
       } else {
         d3.select('#details').html('No schools in selection.');
