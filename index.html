@@ -12,20 +12,14 @@
   <style>
     body { font-family: sans-serif; margin: 0; padding: 20px; }
     #controls { margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
-    button { padding: 6px 12px; }
-    select, input[type=range] { padding: 4px; }
+    button, select, input[type=range] { padding: 6px; }
     .tooltip {
-      position: absolute;
-      text-align: left;
-      padding: 8px;
-      font-size: 12px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      pointer-events: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      position: absolute; text-align: left; padding: 8px; font-size: 12px;
+      background: white; border: 1px solid #ccc; border-radius: 4px;
+      pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    svg { cursor: grab; }
+    .brush .selection { fill: steelblue; fill-opacity: 0.3; stroke: #fff; }
+    #details { margin-top: 10px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -33,77 +27,84 @@
   <div id="controls">
     <button id="prevBtn">Previous</button>
     <button id="nextBtn">Next</button>
-    <label>Filter Type:
-      <select id="typeFilter">
-        <option value="All">All</option>
-        <option value="Public">Public</option>
-        <option value="Private">Private</option>
-        <option value="Charter">Charter</option>
-      </select>
+    <label>School Type:
+      <select id="typeFilter"><option>All</option><option>Public</option><option>Private</option><option>Charter</option></select>
     </label>
     <label>Point Size:
       <input type="range" id="sizeRange" min="2" max="10" value="4" />
     </label>
   </div>
+
   <div id="viz"></div>
+  <div id="hint" style="color:#555; font-style:italic;">Tip: Hover for details, drag box to select multiple schools.</div>
+  <div id="details"></div>
 
   <script>
-  let currentSlide = 1;
-  let data;
-  const margin = { top: 40, right: 20, bottom: 50, left: 60 };
-  const width = 800 - margin.left - margin.right;
-  const height = 500 - margin.top - margin.bottom;
+  let currentSlide=1,data;
+  const margin={top:40,right:20,bottom:50,left:60}, width=800-margin.left-margin.right, height=500-margin.top-margin.bottom;
+  const svg=d3.select('#viz').append('svg').attr('width',width+margin.left+margin.right).attr('height',height+margin.top+margin.bottom)
+    .append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const tooltip=d3.select('body').append('div').attr('class','tooltip').style('opacity',0);
+  const brush=d3.brush().extent([[0,0],[width,height]]).on('end',brushended);
 
-  const svg = d3.select('#viz')
-    .append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .call(d3.zoom().scaleExtent([1, 8]).on('zoom', zoomed))
-    .append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`);
+  d3.csv('education_inequality_data.csv',d3.autoType).then(raw=>{data=raw; init();});
 
-  const tooltip = d3.select('body').append('div').attr('class', 'tooltip').style('opacity', 0);
-
-  d3.csv('education_inequality_data.csv', d3.autoType).then(raw => { data = raw; init(); });
-
-  function init() {
-    d3.select('#prevBtn').on('click', () => { if (currentSlide>1) { currentSlide--; updateSlide(); }});
-    d3.select('#nextBtn').on('click', () => { if (currentSlide<3) { currentSlide++; updateSlide(); }});
-    d3.select('#typeFilter').on('change', updateSlide);
-    d3.select('#sizeRange').on('input', updateSlide);
+  function init(){
+    d3.select('#prevBtn').on('click',()=>{if(currentSlide>1) {currentSlide--;updateSlide();}});
+    d3.select('#nextBtn').on('click',()=>{if(currentSlide<3) {currentSlide++;updateSlide();}});
+    d3.select('#typeFilter').on('change',updateSlide);
+    d3.select('#sizeRange').on('input',updateSlide);
     updateSlide();
   }
 
-  function zoomed(event) { svg.attr('transform', event.transform); }
-
-  function updateSlide() {
-    svg.selectAll('*').remove();
-    const filter = d3.select('#typeFilter').property('value');
-    const size = +d3.select('#sizeRange').property('value');
-    const subset = filter==='All' ? data : data.filter(d=>d.school_type===filter);
-    switch(currentSlide) {
-      case 1: drawScatter(subset,'funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)',size, 'No clear trend: correlation ≈ 0','Funding vs. Score',15000,85,40,-30); break;
-      case 2: drawScatter(subset,'student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)',size,'Low-ratio schools often high-scoring','Ratio vs. Score',12,95,-60,-40); break;
-      case 3: drawScatter(subset,'percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)',size,'No strong inverse relationship','Income vs. Score',60,75,50,30); break;
-    }
+  function updateSlide(){
+    svg.selectAll('*').remove(); d3.select('#details').html('');
+    const filter=d3.select('#typeFilter').property('value');
+    const size=+d3.select('#sizeRange').property('value');
+    const subset=filter==='All'?data:data.filter(d=>d.school_type===filter);
+    let cfg;
+    if(currentSlide===1) cfg=['funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)','No clear trend: correlation ≈ 0','Funding vs. Score',15000,85,40,-30];
+    if(currentSlide===2) cfg=['student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)','Low-ratio schools often high-scoring','Ratio vs. Score',12,95,-60,-40];
+    if(currentSlide===3) cfg=['percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)','No strong inverse relationship','Income vs. Score',60,75,50,30];
+    drawScatter(subset,...cfg,size);
   }
 
-  function drawScatter(dataset,xKey,yKey,xLabel,yLabel,pointSize, note, title, ax, ay, dx, dy) {
-    const x = d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width]);
-    const y = d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0]);
+  function drawScatter(dataset,xKey,yKey,xLabel,yLabel,note,title,ax,ay,dx,dy,pointSize){
+    const x=d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width]);
+    const y=d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0]);
     svg.append('g').attr('transform',`translate(0,${height})`).call(d3.axisBottom(x));
     svg.append('g').call(d3.axisLeft(y));
     svg.append('text').attr('x',width/2).attr('y',height+margin.bottom-10).attr('text-anchor','middle').text(xLabel);
     svg.append('text').attr('transform','rotate(-90)').attr('x',-height/2).attr('y',-margin.left+15).attr('text-anchor','middle').text(yLabel);
-    svg.selectAll('circle').data(dataset).enter().append('circle')
+    const circles=svg.append('g').selectAll('circle').data(dataset).enter().append('circle')
       .attr('cx',d=>x(d[xKey])).attr('cy',d=>y(d[yKey])).attr('r',pointSize)
       .attr('fill','#1f77b4').attr('opacity',0.7)
-      .on('mouseover',(e,d)=>{tooltip.transition().duration(200).style('opacity',0.9);
-        tooltip.html(`<strong>${d.school_name}</strong><br/>${xLabel}: ${d[xKey]}<br/>${yLabel}: ${d[yKey]}`)
-          .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);
-      }).on('mouseout',()=>{tooltip.transition().duration(500).style('opacity',0);});
-    const ann = d3.annotation().type(d3.annotationLabel).annotations([{note:{label:note,title:title},x:x(ax),y:y(ay),dx:dx,dy:dy}]);
+      .on('mouseover',(e,d)=>{tooltip.style('opacity',0.9).html(`<strong>${d.school_name}</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
+           .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);})
+      .on('mouseout',()=>tooltip.style('opacity',0));
+    svg.append('g').call(brush);
+    const ann=d3.annotation().type(d3.annotationLabel).annotations([{note:{label:note,title:title},x:x(ax),y:y(ay),dx:dx,dy:dy}]);
     svg.append('g').call(ann);
+  }
+
+  function brushended({selection}){
+    if(!selection) {d3.select('#details').html(''); return;}
+    const [[x0,y0],[x1,y1]]=selection;
+    const filter=d3.select('#typeFilter').property('value');
+    const dataset=filter==='All'?data:data.filter(d=>d.school_type===filter);
+    const xKey=['funding_per_student_usd','student_teacher_ratio','percent_low_income'][currentSlide-1];
+    const yKey='avg_test_score_percent';
+    const selected=dataset.filter(d=>{
+      const x=d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width])(d[xKey]);
+      const y=d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0])(d[yKey]);
+      return x0<=x && x<=x1 && y0<=y && y<=y1;
+    });
+    if(selected.length){
+      const list=selected.map(d=>d.school_name+' ('+d.school_type+')').join('<br>');
+      d3.select('#details').html(`<strong>Selected Schools:</strong><br>${list}`);
+    } else {
+      d3.select('#details').html('No schools in selection.');
+    }
   }
   </script>
 </body>
