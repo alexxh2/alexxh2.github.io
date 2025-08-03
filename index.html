@@ -49,90 +49,96 @@
   </div>
 
   <script>
-  let currentSlide=1,data;
-  const margin={top:40,right:20,bottom:50,left:60}, width=800-margin.left-margin.right, height=500-margin.top-margin.bottom;
-  const container=d3.select('#container');
-  const svgGroup = container.select('#viz')
-    .append('svg').attr('width',width+margin.left+margin.right).attr('height',height+margin.top+margin.bottom)
-    .append('g').attr('transform',`translate(${margin.left},${margin.top})`);
-  const tooltip=d3.select('body').append('div').attr('class','tooltip').style('opacity',0);
-  const brush=d3.brush().extent([[0,0],[width,height]]).on('end',brushended);
+    let currentSlide = 1, data;
+    const margin = {top:40,right:80,bottom:50,left:80}, width = 800-margin.left-margin.right, height = 500-margin.top-margin.bottom;
+    const container = d3.select('#container');
+    const svgGroup = container.select('#viz')
+      .append('svg').attr('width',width+margin.left+margin.right).attr('height',height+margin.top+margin.bottom)
+      .append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+    const tooltip = d3.select('body').append('div').attr('class','tooltip').style('opacity',0);
+    const brush = d3.brush().extent([[0,0],[width,height]]).on('end',brushended);
 
-  d3.csv('education_inequality_data.csv',d3.autoType).then(raw=>{data=raw; init();});
+    d3.csv('education_inequality_data.csv', d3.autoType).then(raw=>{data=raw; init();});
 
-  d3.select('#startBtn').on('click',()=>{
-    d3.select('#home').classed('hidden', true);
-    container.classed('hidden', false);
-  });
-
-  function init(){
-    d3.select('#prevBtn').on('click',()=>{
-      if(currentSlide>1){ currentSlide--; updateSlide(); }
-      else { d3.select('#container').classed('hidden', true); d3.select('#home').classed('hidden', false); }
+    d3.select('#startBtn').on('click',()=>{
+      d3.select('#home').classed('hidden', true);
+      container.classed('hidden', false);
     });
-    d3.select('#nextBtn').on('click',()=>{ if(currentSlide<3){ currentSlide++; updateSlide(); }});
-    d3.select('#typeFilter').on('change',updateSlide);
-    d3.select('#sizeRange').on('input',updateSlide);
-    updateSlide();
-  }
 
-  function updateSlide(){
-    svgGroup.selectAll('*').remove(); d3.select('#details').html('');
-    const filter=d3.select('#typeFilter').property('value');
-    const size=+d3.select('#sizeRange').property('value');
-    const subset=filter==='All'?data:data.filter(d=>d.school_type===filter);
-    let cfg;
-    if(currentSlide===1){
-      cfg=['funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)','No clear trend: correlation ≈ 0','Funding vs. Score',15000,85,40,-30];
-      d3.select('#title').text('Scene 1: Funding vs Test Score');
+    function init(){
+      d3.select('#prevBtn').on('click',()=>{
+        if(currentSlide>1){ currentSlide--; updateSlide(); }
+        else { container.classed('hidden', true); d3.select('#home').classed('hidden', false); }
+      });
+      d3.select('#nextBtn').on('click',()=>{ if(currentSlide<3){ currentSlide++; updateSlide(); }});
+      d3.select('#typeFilter').on('change',updateSlide);
+      d3.select('#sizeRange').on('input',updateSlide);
+      updateSlide();
     }
-    if(currentSlide===2){
-      cfg=['student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)','Low-ratio schools often high-scoring','Ratio vs. Score',30,60,-120,30];
-      d3.select('#title').text('Scene 2: Student–Teacher Ratio');
-    }
-    if(currentSlide===3){
-      cfg=['percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)','No strong inverse relationship','Income vs. Score',60,75,50,30];
-      d3.select('#title').text('Scene 3: Socioeconomic Status');
-    }
-    drawScatter(subset,...cfg,size);
-  }
 
-  function drawScatter(dataset,xKey,yKey,xLabel,yLabel,note,title,ax,ay,dx,dy,pointSize){
-    const x=d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width]);
-    const y=d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0]);
-    svgGroup.append('g').attr('transform',`translate(0,${height})`).call(d3.axisBottom(x));
-    svgGroup.append('g').call(d3.axisLeft(y));
-    svgGroup.append('text').attr('x',width/2).attr('y',height+margin.bottom-10).attr('text-anchor','middle').text(xLabel);
-    svgGroup.append('text').attr('transform','rotate(-90)').attr('x',-height/2).attr('y',-margin.left+15).attr('text-anchor','middle').text(yLabel);
-    svgGroup.append('g').call(brush);
-    const circles=svgGroup.append('g').selectAll('circle').data(dataset).enter().append('circle')
-      .attr('cx',d=>x(d[xKey])).attr('cy',d=>y(d[yKey])).attr('r',pointSize)
-      .attr('fill','#1f77b4').attr('opacity',0.7)
-      .on('mouseover',(e,d)=>{ tooltip.style('opacity',0.9)
-        .html(`<strong>${d.school_name} (${d.school_type})</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
-        .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);
-      }).on('mouseout',()=>tooltip.style('opacity',0));
-    const ann=d3.annotation().type(d3.annotationLabel).annotations([{note:{label:note,title:title,wrap:300},x:x(ax),y:y(ay),dx:dx,dy:dy}]);
-    svgGroup.append('g').call(ann);
-  }
+    function updateSlide(){
+      svgGroup.selectAll('*').remove(); d3.select('#details').html('');
+      const filter = d3.select('#typeFilter').property('value');
+      const pointSize = +d3.select('#sizeRange').property('value');
+      const subset = filter==='All'? data : data.filter(d=>d.school_type===filter);
+      let cfg;
+      if(currentSlide===1){
+        cfg=['funding_per_student_usd','avg_test_score_percent','Funding per Student (USD)','Average Test Score (%)',
+             'No clear trend: correlation ≈ 0','Funding vs. Score', width+20, 50, -50, 0, 'crimson'];
+        d3.select('#title').text('Scene 1: Funding vs Test Score');
+      }
+      if(currentSlide===2){
+        cfg=['student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)',
+             'Low-ratio schools often high-scoring','Ratio vs. Score', width+20, height-50, -50, 0, 'seagreen'];
+        d3.select('#title').text('Scene 2: Student–Teacher Ratio');
+      }
+      if(currentSlide===3){
+        cfg=['percent_low_income','avg_test_score_percent','Percent Low-Income (%)','Average Test Score (%)',
+             'No strong inverse relationship','Income vs. Score', -60, 50, 10, 0, 'steelblue'];
+        d3.select('#title').text('Scene 3: Socioeconomic Status');
+      }
+      drawScatter(subset, ...cfg, pointSize);
+    }
 
-  function brushended({selection}){
-    if(!selection){d3.select('#details').html(''); return;}
-    const [[x0,y0],[x1,y1]]=selection;
-    const filter=d3.select('#typeFilter').property('value');
-    const dataset=filter==='All'?data:data.filter(d=>d.school_type===filter);
-    const keys=['funding_per_student_usd','student_teacher_ratio','percent_low_income'];
-    const xKey=keys[currentSlide-1], yKey='avg_test_score_percent';
-    const selected=dataset.filter(d=>{
-      const xv=d3.scaleLinear().domain(d3.extent(dataset,d=>d[xKey])).nice().range([0,width])(d[xKey]);
-      const yv=d3.scaleLinear().domain(d3.extent(dataset,d=>d[yKey])).nice().range([height,0])(d[yKey]);
-      return x0<=xv && xv<=x1 && y0<=yv && yv<=y1;
-    });
-    if(selected.length){
-      const list=selected.map(d=>`• ${d.school_name} (${d.school_type})`).join('<br>');
-      d3.select('#details').html(`<strong>Selected Schools:</strong><br>${list}`);
-    } else { d3.select('#details').html('No schools in selection.'); }
-  }
+    function drawScatter(dataset, xKey, yKey, xLabel, yLabel, note, title, ax, ay, dx, dy, color, pointSize){
+      const xScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[xKey])).nice().range([0,width]);
+      const yScale = d3.scaleLinear().domain(d3.extent(dataset, d=>d[yKey])).nice().range([height,0]);
+      svgGroup.append('g').attr('transform',`translate(0,${height})`).call(d3.axisBottom(xScale));
+      svgGroup.append('g').call(d3.axisLeft(yScale));
+      svgGroup.append('text').attr('x',width/2).attr('y',height+margin.bottom-10).attr('text-anchor','middle').text(xLabel);
+      svgGroup.append('text').attr('transform','rotate(-90)').attr('x',-height/2).attr('y',-margin.left+15).attr('text-anchor','middle').text(yLabel);
+      svgGroup.append('g').call(brush);
+
+      svgGroup.append('g').selectAll('circle').data(dataset).enter().append('circle')
+        .attr('cx',d=>xScale(d[xKey])).attr('cy',d=>yScale(d[yKey])).attr('r',pointSize)
+        .attr('fill',color).attr('opacity',0.7)
+        .on('mouseover',(e,d)=>{ tooltip.style('opacity',0.9)
+            .html(`<strong>${d.school_name} (${d.school_type})</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
+            .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);
+        }).on('mouseout',()=>tooltip.style('opacity',0));
+
+      // Annotation outside with arrow
+      const ann = d3.annotation().type(d3.annotationCalloutElbow).annotations([{ note:{label:note,title:title,wrap:300}, x:ax, y:ay, dx:dx, dy:dy }]);
+      svgGroup.append('g').call(ann);
+    }
+
+    function brushended({selection}){
+      if(!selection){ d3.select('#details').html(''); return; }
+      const [[x0,y0],[x1,y1]] = selection;
+      const filter = d3.select('#typeFilter').property('value');
+      const dataset = filter==='All'? data : data.filter(d=>d.school_type===filter);
+      const keys = ['funding_per_student_usd','student_teacher_ratio','percent_low_income'];
+      const xKey = keys[currentSlide-1], yKey = 'avg_test_score_percent';
+      const selected = dataset.filter(d=>{
+        const xv = d3.scaleLinear().domain(d3.extent(dataset, d=>d[xKey])).nice().range([0,width])(d[xKey]);
+        const yv = d3.scaleLinear().domain(d3.extent(dataset, d=>d[yKey])).nice().range([height,0])(d[yKey]);
+        return x0<=xv && xv<=x1 && y0<=yv && yv<=y1;
+      });
+      if(selected.length){
+        const list = selected.map(d=>`• ${d.school_name} (${d.school_type})`).join('<br>');
+        d3.select('#details').html(`<strong>Selected Schools:</strong><br>${list}`);
+      } else { d3.select('#details').html('No schools in selection.'); }
+    }
   </script>
 </body>
 </html>
