@@ -1,7 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Education Inequality Narrative Visualization</title>
+  <!-- D3 and d3-annotation -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 20px; }
+    #controls { margin-bottom: 10px; }
+    button { padding: 6px 12px; margin-right: 5px; }
+    .tooltip {
+      position: absolute;
+      text-align: left;
+      width: auto;
+      padding: 8px;
+      font-size: 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      pointer-events: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
 <body>
-<h1>Hello World</h1>
-<p>I'm hosted with GitHub Pages.</p>
+  <h1>How Funding, Staffing & Socioeconomic Status Relate to Test Scores</h1>
+  <div id="controls">
+    <button id="prevBtn">Previous</button>
+    <button id="nextBtn">Next</button>
+  </div>
+  <div id="viz"></div>
+
+  <!-- CSV Data -->
+  <!-- Make sure education_inequality_data.csv is in the same directory -->
+
+  <!-- Narrative script -->
+  <script src="script.js"></script>
 </body>
 </html>
