@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Education Inequality Narrative Visualization</title>
-  <!-- D3 and d3-annotation -->
+
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
   <style>
@@ -22,7 +22,7 @@
     #details { margin-top: 10px; font-size: 14px; text-align: left; }
     svg { display: block; margin: auto; }
     .hidden { display: none; }
-    /* Annotation text styling */
+
     .annotation-note-title,
     .annotation-note-label {
       fill: white;
@@ -98,7 +98,7 @@
       }
       if(currentSlide===2){
         cfg=['student_teacher_ratio','avg_test_score_percent','Student–Teacher Ratio','Average Test Score (%)',
-             'Low-ratio schools often high-scoring','Ratio vs. Score', -60, 50, 10, 0, 'seagreen'];
+             'Low-ratio schools slightly higher-scoring','Ratio vs. Score', -60, 50, 10, 0, 'seagreen'];
         d3.select('#title').text('Scene 2: Student–Teacher Ratio');
       }
       if(currentSlide===3){
@@ -126,7 +126,6 @@
             .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);
         }).on('mouseout',()=>tooltip.style('opacity',0));
 
-      // Annotation outside with arrow
       const ann = d3.annotation().type(d3.annotationCalloutElbow).annotations([{ note:{label:note,title:title,wrap:400}, x:ax, y:ay, dx:dx, dy:dy }]);
       svgGroup.append('g').call(ann);
     }
