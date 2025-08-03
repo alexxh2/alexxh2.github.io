@@ -76,13 +76,23 @@
     svg.append('g').call(d3.axisLeft(y));
     svg.append('text').attr('x',width/2).attr('y',height+margin.bottom-10).attr('text-anchor','middle').text(xLabel);
     svg.append('text').attr('transform','rotate(-90)').attr('x',-height/2).attr('y',-margin.left+15).attr('text-anchor','middle').text(yLabel);
-    const circles=svg.append('g').selectAll('circle').data(dataset).enter().append('circle')
-      .attr('cx',d=>x(d[xKey])).attr('cy',d=>y(d[yKey])).attr('r',pointSize)
-      .attr('fill','#1f77b4').attr('opacity',0.7)
-      .on('mouseover',(e,d)=>{tooltip.style('opacity',0.9).html(`<strong>${d.school_name}</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
-           .style('left',`${e.pageX+10}px`).style('top',`${e.pageY-28}px`);})
-      .on('mouseout',()=>tooltip.style('opacity',0));
+    // Add brush for selection
     svg.append('g').call(brush);
+    
+    // Plot circles on top of brush
+    const circles = svg.append('g').selectAll('circle').data(dataset).enter().append('circle')
+      .attr('cx', d => x(d[xKey]))
+      .attr('cy', d => y(d[yKey]))
+      .attr('r', pointSize)
+      .attr('fill', '#1f77b4')
+      .attr('opacity', 0.7)
+      .on('mouseover', (e, d) => {
+        tooltip.style('opacity', 0.9)
+               .html(`<strong>${d.school_name}</strong><br>${xLabel}: ${d[xKey]}<br>${yLabel}: ${d[yKey]}`)
+               .style('left', `${e.pageX + 10}px`)
+               .style('top', `${e.pageY - 28}px`);
+      })
+      .on('mouseout', () => tooltip.style('opacity', 0));
     const ann=d3.annotation().type(d3.annotationLabel).annotations([{note:{label:note,title:title},x:x(ax),y:y(ay),dx:dx,dy:dy}]);
     svg.append('g').call(ann);
   }
